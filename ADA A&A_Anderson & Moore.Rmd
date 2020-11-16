@@ -1,0 +1,234 @@
+---
+title: "ADA Acquire & Analyze"
+author: "Mary Anderson & Kristi Moore"
+date: "11/15/2020"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(scales)
+library(readr)
+library(forcats)
+library(knitr)
+library(mosaic)
+library(broom)
+#install.packages("Sleuth3")
+library(Sleuth3)
+```
+
+``` {r data_input, include=FALSE}
+data_file <- "ultraresults.csv"
+d <- read_csv(data_file)
+
+```
+## Executive Summary
+
+Women are underrepresented in the ultra-marathon race world, comprising only 16% of participants. As their participation increases, analysis shows that men and women have similar times at 100 mile races. Some races state that women have higher finishing rates as well at ultra-marathon distances. 
+Our question was are women actually performing better at longer distances, or is their participation in ultra-running increasing so there are more women being noticed?
+We gathered the results of 14 different ultra-marathons from UltraSignup with a minimum distance of 100 kilometers. All races took place in the United States. 
+In our analysis, we looked at a chi-squared test and found an association between gender and completion of ultra-marathons with men having a slightly higher rate of finishing than women. 
+We next ran a logistic regression test to see if the odds of a finishing an ultra-marathon are associated with gender, age, or the region the runner is from. We found that, again, being male increases the odds of finishing an ultra-marathon by 28%.
+Further analysis could include additional data from international sources and more races to see if the results maintain that men have better success at finishing ultra-marathons. 
+
+
+## Introduction
+
+Anecdotally, women are performing better at longer distances. As a common example, Courtney Dauwalter outright won the Moab 240 race in 2017. 
+Additionally, runners often say the playing field between genders levels as distance increases.Although women are performing better at ultra-marathons, their participation is well below men, comprising only 16% of ultra-marathon races (2). 
+
+In 2019, the popular Run Rabbit Run 100 mile race in Colorado announced it would allow women an extra hour than men to complete their race in the "tortoise" category (basically, not super fast runners). This was an attempt to increase female participation in their race (1). 
+They faced backlash for this decision with women feeling belittled by saying they needed the extra time. 
+Elizabeth Guy analyzed the results from eleven 100-mile races to see if this extra hour is warranted, or if the average finishing times are the same at this distance between the genders (1). 
+She found that there was only a significant difference in finishing times between the genders at the elite level (about the top 5 finishers of races per gender), and even this gap is closing. 
+For the average runner, there was no significant difference between average finish times for men and women and this extra hour is not warranted. 
+
+Are women actually performing better at longer distances, or is their participation in ultra-running increasing so there are more women being noticed?
+
+High Lonesome 100-miler in Salida, Colorado is a newer and challenging ultra-marathon. In the three years of their race, they have seen women finish at higher rates than men, 72% versus 68% (3).
+They advertise this to encourage more women to apply for their race lottery. 
+For their 2020 race, they reserved 50% of their lottery spots for women, which is rare in the ultra-running lottery world. Facebook comments (most seemingly male) said this was unfair as more men apply for the lottery and they might not even get enough women to fill 50% of the race spots. 
+They successfully filled their lottery spots with 50% men and women, although the race was canceled due to COVID-19 so the results will have to wait until 2021. 
+
+Is women's higher rate of finishing ultra-marathons specific to High Lonesome, or do women finish ultra-marathons more consistently than men? We looked at the results of 14 races 100 km and longer in distance to answer this question. 
+
+## Data 
+
+UltraSignup is a common platform used for race event registration and results in the ultra-running world. I found Python code from Elizabeth Guy (2) that scraped the race results from ultrasignup.com. After various iterations and attempts at modifying her code, I could not get it to work successfully on my computer. For the purposes of this assignment, the race result tables were transferred into Excel directly from the UltraSignup website.
+
+While gathering the data, we found that not all ultra races listed the “Did Not Finish” (DNF) results for their race. The considered race results were limited to only ones that used UltraSignup for registration and results and included DNFs. Additionally, we tried to find races from around the country and not just races we had heard of or are nearby our current location (4). Ultimately, we assembled the results of 14 races totaling 3,357 runner results. 
+
+As many races were canceled in 2020 due to COVID-19, we primarily looked at results from 2019 unless otherwise specified. 
+The race results analyzed include: 
+* High Lonesome
+* Western States
+* Hardrock 2018 (2019 canceled due to snow)
+* IMTUF  
+* Wasatch 100
+* Old Dominion
+* Javelina Jundred
+* Yeti 100, Moab 240
+* Tahoe 200
+* The Bear
+* Tushars Mountain Run
+* Never Summer
+* The Canyons California
+* Cascade Crest 
+
+## Descriptive Statistics
+
+```{r Descriptive Statistics, echo=F}
+
+# summary of Genders
+d %>% 
+  group_by(Gender) %>%
+  summarize(count=n()) %>%
+  ungroup %>% 
+  ggplot(aes(x=Gender,y=count)) + 
+  geom_col() + 
+  theme_bw() + 
+  labs(title="Gender Participation")
+
+# summary of finishers
+d %>% 
+  group_by(Finished) %>%
+  summarize(count=n()) %>%
+  ungroup %>% 
+  ggplot(aes(x=Finished,y=count)) + 
+  geom_col() + 
+  theme_bw() + 
+  labs(title="Finisher Rates")
+
+# finishers by gender
+con <- table(d$Gender, d$Finished)
+mosaicplot(con, main = "Finishers by Gender",
+           xlab = "Gender",
+           ylab = "Finished")
+
+#runners by region 
+d %>% 
+  group_by(Region) %>%
+  summarize(count=n()) %>%
+  ungroup %>% 
+  ggplot(aes(x=Region,y=count)) + 
+  geom_col() + 
+  theme_bw() + 
+  labs(title="Runners by Region")
+
+# distribution of age
+ggplot(d,
+       aes(x=Age)) + 
+  geom_density() + 
+  theme_bw() + 
+  labs(title="Age")
+
+# scatterplot of age and time with gender as color
+# do we need to filter out DNFs? They are the thick line at bottom with time of 0
+ggplot(d, aes(x=Time, y=Age, col=Gender)) + geom_point()
+
+```
+## Methods
+
+### $\chi^2$ test
+
+As gender and completion yes/no are categorical variables, we looked at a chi-squared test to see if there is a relationship between these variables. 
+
+$H_0:$ There is no relationship in ultra-running completion rates based on gender. 
+
+$H_A:$ There is a relationship in in ultra-running completion rates based on gender. 
+
+Table 1 shows the expected values by gender and finishing rates, assuming that the variables are independent. 
+
+``` {r expected_table, eval = T, echo=F}
+r.count <- nrow(d)
+finished.split <- table(d$Finished)/r.count
+gender.split <- table(d$Gender)/r.count
+expected.tbl <- outer(finished.split, gender.split)*r.count
+
+knitr::kable(expected.tbl,caption="Table 1: Expected values by gender and 
+             Finishing rate, assuming independence.") 
+```
+
+``` {r chisq_test, eval=T, echo=F}
+chisq.test(x=d$Finished,y=d$Gender)
+```
+
+### Chi Squared Test Results
+
+The P-value is significant, although not extremely significant, indicating that was should reject the null hypothesis. Therefore, we can say that there is a relationship between gender and completion rates in ultra running at distances of 100 km or greater. 
+
+The contingency table shows that men are more likely to finish than women with 73% of men finishing ultra-marathon races compared to women at 69%. Interestingly, these are nearly the same percentages of finishers found by High Lonesome 100 except with the genders reversed. 
+
+``` {r contingency_table_redux, eval = T, echo=F}
+knitr::kable(table(d$Finished,d$Gender))
+```
+
+```{r residuals table, eval=T, echo=F}
+chi <- chisq.test(x=d$Gender, y=d$Finished)
+knitr::kable(residuals(chi, digits = 2, std = FALSE, raw = FALSE,caption="Table 3: Residuals Table"))
+```
+Residuals are the difference between the observed values and expected values, with positive values indicating a value higher than expected and negative values indicating less. The residuals found are all small and there is some variance between the genders and completion rates, although not extreme variance, reaffirming the results of our chi-squared test. 
+
+### Logistic Regression & Results
+
+Next, we used logistic regression to see if the odds of finishing an ultra-marathon are associated with gender, age, or region. 
+
+$H_0:$ The odds of a finishing an ultra marathon are not associated with gender, age, or region after accounting for the other variables in the model.
+
+$H_A:$ The odds of a finishing an ultra marathon are associated with gender, age, or region after accounting for the other variables in the model.
+
+```{r model, eval=T, echo=F}
+
+#one way to do logistic regression in R
+ultra.glm <- glm(finished2 ~ Gender + Age + Region, binomial(link="logit"), data=d)
+#summary(ultra.glm)
+
+print(tidy(ultra.glm))
+```
+``` {r model_2, eval=F, echo=F}
+#GenderM
+exp(0.2435589)-1
+#28%
+
+#age
+exp(-0.0242977)-1
+#-2%
+
+```
+### Logistic Regression Results
+
+As Gender-Male has a positive coefficient, we see that, similar to the Chi-Squared results, being male does increase the likelihood of finishing an ultra-marathon by 28%. Gender is statistically significant. Age was also found to be statistically significant with a negative coefficient: for each additional year of age, the likelihood of finishing decreases by 2%.  
+
+Looking at the coefficients for regions, the Southwest and Southeast regions are the most significant and both have a negative impact on completion. 
+
+Looking at the regions, "international" is in the intercept. All other regions have negative coefficients, suggesting that being from the United States decreases your chances of finishing an ultra-marathon. This could be because all races chosen in this analysis are located in the United States and might select for elite international runners, as opposed to non-elite international runners who might be less likely to travel abroad to the US for a race. 
+
+
+## Future Directions
+
+To continue this analysis in the future, we would recommend a larger data set to more thoroughly analyze the impact of gender on completion rates of ultra-marathons. 
+To increase the data set, it would make sense to include as much geographic variety as possible both within the United States and including international races. Adding data from various years would help account for women's increased participation in the sport. 
+We would also be interested in expanding the race range to include 50 mile races as well, as an ultra-marathon is considered any distance above a traditional 26.2 mile marathon. 
+Including data from sources other than UltraSignup would also be beneficial. Potential sources could be runsignup.com and the ITRA (International Trail Running Association). 
+
+## Conclusion
+
+In our analysis of 14 ultra-marathons in the United States, we found that there is an association between gender and finishing an ultra-marathon. Specifically, we found that being male increases your chances of finishing an ultra-marathon by 28%. 
+Further analysis could include additional data from more races including international sources to see if the results maintain that men have better success at finishing ultra-marathons. 
+
+## Link to GitHub Repo:
+https://github.com/maryeand/ADA-Acquire-Analyze
+
+
+## References
+
+1. Glenn, Elizabeth. “Gender Differences in Ultra Running?” Medium, 12 Feb. 2019, medium.com/@elizabeth.guy86/gender-differences-in-ultra-running-f0880047b9ed.
+2. Dawson, Andrew. “More People Are Running Ultras Than Ever Before.” Runner’s World, 24 Jan. 2020, 
+www.runnersworld.com/news/a30430651/more-people-are-running-ultras-study.
+3. High Lonesome 100, 2019 Lottery Announcement, Facebook, 19 Nov. 2019. https://www.facebook.com/highlonesome100. Accessed 12 Nov. 2020. 
+4. “2019 Biggest Ultrarunning Races By Finisher Count. North American Races Only.” Ultra Running Magazine, calendar.ultrarunning.com/stats/biggest-ultra-races?year=2019. Accessed 11 Nov. 2020.
