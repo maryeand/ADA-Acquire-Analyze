@@ -2,6 +2,5 @@
 Repository for Fall 2020 Applied Data Analytics Acquire &amp; Analyze Project
 
 Files:
-
-Links:
-Google Doc to working version of report: https://docs.google.com/document/d/1UBQ-dKQKFLl_H2Zse_7wPfRWveSYiME7KPjW1NlkmYU/edit
+* Code: ADA A&A Anderson & Moore.RMD
+* Report: ADA-A-A_Anderson---Moore.html
